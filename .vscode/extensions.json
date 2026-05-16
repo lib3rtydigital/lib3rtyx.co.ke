@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "enkia.tokyo-night",
+    "pkief.material-icon-theme",
+    "esbenp.prettier-vscode",
+    "usernamehw.errorlens",
+    "eamodio.gitlens"
+  ],
+  "unwantedRecommendations": []
+}
