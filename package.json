@@ -1,5 +1,10 @@
 {
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.6",
+    "@clerk/react": "^6.7.1",
     "git": "^0.1.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.3"
   }
 }
