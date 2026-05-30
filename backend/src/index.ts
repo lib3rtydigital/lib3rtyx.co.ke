@@ -8,6 +8,7 @@ import path from 'node:path';
 
 import { getEnv } from './lib/env';
 import { clerkWebhookHandler } from './webhooks/clerk';
+import keepAlivecron from"./lib/cron";
 
 const env = getEnv();
 const app = express();
@@ -20,6 +21,10 @@ app.post('/webhook/clerk', rawJson, (req, res) => {
 app.use(express.json());
 app.use(cors());
 app.use(clerkMiddleware());
+app.get("/health", (_req, res) => {
+  res.json({ ok:true });
+
+}
 
 const publicDir = path.join(process.cwd(), 'public');
 if (fs.existsSync(publicDir)) {
@@ -34,4 +39,9 @@ if (fs.existsSync(publicDir)) {
     res.sendFile(path.join(publicDir, 'index.html'), (err) => next(err));
   });
 }
-app.listen(env.PORT, () => console.log(`listening on port: ${env.PORT}`));
+app.listen(env.PORT, () => {
+  console.log(`listening on port: ${env.PORT}`);
+  if (env.NODE_ENV === 'production'){
+  keepAlivecron.start();
+  }
+});
