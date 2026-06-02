@@ -22,9 +22,8 @@ app.use(express.json());
 app.use(cors());
 app.use(clerkMiddleware());
 app.get("/health", (_req, res) => {
-  res.json({ ok:true });
-
-}
+  res.json({ ok: true });
+});
 
 const publicDir = path.join(process.cwd(), 'public');
 if (fs.existsSync(publicDir)) {

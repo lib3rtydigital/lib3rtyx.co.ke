@@ -1,6 +1,5 @@
 
 import { verifyWebhook } from "@clerk/backend/webhooks";
-import { neon } from '@neondatabase/serverless';
 import { eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { db } from '../db';
@@ -18,7 +17,6 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
       res.status(503).send('Webhooks secret is not provided');
       return;
     }
-    const sql = neon(process.env.DATABASE_URL);
 
     // Clerk's verifier expects a Web Request with the raw body; Express may give Buffer or string.
     const payload = req.body instanceof Buffer ? req.body.toString('utf8') : String(req.body);
@@ -71,9 +69,7 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
     console.error('Clerk webhook error', err);
     res.status(400).json({ error: 'Invalid webhook' });
   }
-await db
-.update(users)
-.set({})
+}
 
 
 }
