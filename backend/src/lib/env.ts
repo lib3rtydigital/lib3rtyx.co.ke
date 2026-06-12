@@ -7,7 +7,7 @@ DATABASE_URL: z.string().min(1),
 
 CLERK_PUBLISHABLE_KEY: z.string().min(1),
 CLERK_SECRET_KEY: z.string().min(1),
-CLERK_WEBHOOK_SECRET: z.string().optional(),
+CLERK_WEBHOOK_SECRET: z.string().min(1),
   FRONTEND_URL: z.string().url().optional(),
   POLAR_ACCESS_TOKEN: z.string().optional(),
 POLAR_WEBHOOK_SECRET: z.string().optional(),

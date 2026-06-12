@@ -11,12 +11,7 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
   const env = getEnv();
 
   try {
-    console.log('webhook hit');
-    // webhook verification needs a shared secret; without it we cannot trust incoming POSTs.
-    if (!env.CLERK_WEBHOOK_SECRET) {
-      res.status(503).send('Webhooks secret is not provided');
-      return;
-    }
+    console.log('[Clerk Webhook] Received webhook event');
 
     // Clerk's verifier expects a Web Request with the raw body; Express may give Buffer or string.
     const payload = req.body instanceof Buffer ? req.body.toString('utf8') : String(req.body);
@@ -27,8 +22,17 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
       body: payload,
     });
 
-    // throws if signature is wrong or body was tampered with; only then we trust evt.
-    const evt = await verifyWebhook(request, { signingSecret: env.CLERK_WEBHOOK_SECRET });
+    // Verify the webhook signature
+    let evt;
+    try {
+      evt = await verifyWebhook(request, { signingSecret: env.CLERK_WEBHOOK_SECRET });
+    } catch (verifyErr) {
+      console.error('[Clerk Webhook] Signature verification failed:', verifyErr);
+      res.status(401).json({ error: 'Invalid signature' });
+      return;
+    }
+
+    console.log('[Clerk Webhook] Event type:', evt.type);
 
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
       const u = evt.data;
@@ -42,6 +46,8 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
 
       const role = parseRole(u.public_metadata?.role);
 
+      console.log('[Clerk Webhook] Syncing user:', { clerkUserId: u.id, email, displayName, role });
+
       await db
         .insert(users)
         .values({
@@ -54,22 +60,22 @@ export async function clerkWebhookHandler(req: Request, res: Response) {
           target: users.clerkUserId,
           set: { email, displayName, role, updatedAt: new Date() },
         });
+
+      console.log('[Clerk Webhook] User synced successfully:', u.id);
     }
 
     if (evt.type === 'user.deleted') {
       const id = evt.data.id;
       if (id) {
+        console.log('[Clerk Webhook] Deleting user:', id);
         await db.delete(users).where(eq(users.clerkUserId, id));
+        console.log('[Clerk Webhook] User deleted successfully:', id);
       }
     }
 
-    res.json({ ok: true });
+    res.status(200).json({ success: true });
   } catch (err) {
-    // Bad signature, malformed payload, or DB error — do not leak details to the client.
-    console.error('Clerk webhook error', err);
-    res.status(400).json({ error: 'Invalid webhook' });
+    console.error('[Clerk Webhook] Unexpected error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-
 }
