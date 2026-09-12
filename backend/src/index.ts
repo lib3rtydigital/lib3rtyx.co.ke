@@ -40,6 +40,23 @@ app.use(cors());
 app.use(clerkMiddleware());
 app.use(sentryClerkUserMiddleware);
 
+const publicDir = path.join(process.cwd(), 'public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+}
+app.get('*', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    next();
+    return;
+  }
+
+  if (req.path.startsWith('/api') || req.path.startsWith('/webhooks')) {
+    next();
+    return;
+  }
+
+  res.sendFile(path.join(publicDir, 'index.html'), (err) => next(err));
+});
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });

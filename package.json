@@ -1,12 +1,14 @@
 {
-  "dependencies": {
-    "@clerk/clerk-react": "^5.61.6",
-    "@clerk/react": "^6.7.1",
-    "@neondatabase/serverless": "^1.1.0",
-    "git": "^0.1.5",
-    "pg": "^8.21.0"
+  "name": "lib3rtyx-project",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start": "npm --prefix backend run start"
   },
   "devDependencies": {
-    "tsx": "^4.22.3"
+    "concurrently": "^9.1.0"
   }
 }
