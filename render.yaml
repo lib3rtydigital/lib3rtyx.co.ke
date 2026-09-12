@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: lib3rtyx
+    runtime: docker
+    repo: .
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production

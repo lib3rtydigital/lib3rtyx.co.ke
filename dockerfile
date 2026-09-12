@@ -13,7 +13,7 @@ ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN npm install --no-audit --no-fund \
   && npm run build
 
-  # --- Stage 2: compile the API (TypeScript → JavaScript) ---
+# --- Stage 2: compile the API (TypeScript → JavaScript) ---
 # Produces dist/ with index.js and the rest of the server bundle.
 FROM node:22-bookworm-slim AS backend-build
 WORKDIR /app
