@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCheckout, verifyCheckout } from '../controllers/checkoutController';
+import { createCheckout, verifyCheckout } from '../controllers/checkoutController.js';
 
 const router = Router();
 

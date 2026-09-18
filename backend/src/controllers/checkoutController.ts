@@ -1,12 +1,12 @@
-import { getAuth } from "@clerk/express";
-import { and, eq, inArray } from "drizzle-orm";
-import type { NextFunction, Request, Response } from "express";
-import z from "zod";
-import { db } from "../db";
-import { CheckoutSessionLine, checkoutSessions, products } from "../db/schema";
-import { getEnv } from "../lib/env";
-import { paystackInitialize, paystackVerify } from "../lib/paystack";
-import { getLocalUser } from "../lib/users";
+import { getAuth } from '@clerk/express';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { NextFunction, Request, Response } from 'express';
+import z from 'zod';
+import { db } from '../db/index.js';
+import { CheckoutSessionLine, checkoutSessions, orders, products } from '../db/schema.js';
+import { getEnv } from '../lib/env.js';
+import { paystackInitialize, paystackVerify } from '../lib/paystack.js';
+import { getLocalUser } from '../lib/users.js';
 
 const env = getEnv();
 
@@ -16,47 +16,47 @@ const cartSchema = z.object({
       z.object({
         productId: z.string().uuid(),
         quantity: z.number().int().positive(),
-      }),
+      })
     )
     .min(1),
 });
 
-export async function createCheckout(req: Request, res: Response, next: NextFunction) {
+export async function createCheckout(req: Request, res: Response, _next: NextFunction) {
   try {
     // only signed-in users can start checkout
     const { userId, isAuthenticated } = getAuth(req);
     if (!isAuthenticated || !userId) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     const parsed = cartSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid cart", details: parsed.error.flatten() });
+      res.status(400).json({ error: 'Invalid cart', details: parsed.error.flatten() });
       return;
     }
 
     if (!env.PAYSTACK_SECRET_KEY) {
-      res.status(503).json({ error: "Payments are not configured" });
+      res.status(503).json({ error: 'Payments are not configured' });
       return;
     }
 
     const localUser = await getLocalUser(userId);
     if (!localUser) {
-      res.status(503).json({ error: "Account not synced yet" });
+      res.status(503).json({ error: 'Account not synced yet' });
       return;
     }
 
     const ids = parsed.data.items.map((i) => i.productId);
 
-    // load every cart product that exists, is active, and matches the IDs we asked for.
+    // load every cart product that exists, is active, and matches the IDs we asked for
     const prodRows = await db
       .select()
       .from(products)
       .where(and(inArray(products.id, ids), eq(products.active, true)));
 
     if (prodRows.length !== ids.length) {
-      res.status(400).json({ error: "One or more products are invalid" });
+      res.status(400).json({ error: 'One or more products are invalid' });
       return;
     }
 
@@ -74,9 +74,10 @@ export async function createCheckout(req: Request, res: Response, next: NextFunc
       });
     }
 
-    if (totalCents < 10) {
+    // Paystack minimum is typically 100 kobo / 1 NGN equivalent, but keep a small floor in cents
+    if (totalCents < 100) {
       res.status(400).json({
-        error: "Total must be greater than zero",
+        error: 'Total below Paystack minimum (at least 100 cents / 1 unit of major currency)',
       });
       return;
     }
@@ -91,61 +92,75 @@ export async function createCheckout(req: Request, res: Response, next: NextFunc
       })
       .returning();
 
+    const successUrl = `${env.FRONTEND_URL}/checkout/return`;
+
     const checkout = await paystackInitialize(env, {
-      email: localUser.email,
       amount: totalCents,
       currency: env.PAYSTACK_CURRENCY,
-      callbackUrl: `${env.FRONTEND_URL ?? ""}/checkout/return`,
+      email: localUser.email, // Paystack requires customer email
+      callbackUrl: successUrl,
+      metadata: {
+        checkout_session_id: session.id,
+        user_id: userId,
+        custom_fields: [
+          {
+            display_name: 'Checkout Session',
+            variable_name: 'checkout_session_id',
+            value: session.id,
+          },
+        ],
+      },
       reference: session.id,
-      metadata: { checkout_session_id: session.id, clerk_user_id: userId },
     });
 
     await db
       .update(checkoutSessions)
-      .set({ paystackReference: checkout.reference })
+      .set({
+        paystackReference: checkout.reference,
+      })
       .where(eq(checkoutSessions.id, session.id));
 
-    res.json({ checkoutUrl: checkout.authorization_url, reference: checkout.reference });
+    // Paystack authorization URL
+    res.json({ checkoutUrl: checkout.authorization_url });
   } catch (e) {
-    next(e);
+    _next(e);
   }
 }
 
-export async function verifyCheckout(req: Request, res: Response, next: NextFunction) {
+export async function verifyCheckout(req: Request, res: Response, _next: NextFunction) {
   try {
     const { userId, isAuthenticated } = getAuth(req);
     if (!isAuthenticated || !userId) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const reference = typeof req.query.reference === "string" ? req.query.reference : "";
-    if (!reference || !env.PAYSTACK_SECRET_KEY) {
-      res.status(400).json({ error: "A Paystack reference is required" });
+    const reference = z.string().min(1).safeParse(req.query.reference);
+    if (!reference.success) {
+      res.status(400).json({ error: 'A Paystack reference is required' });
       return;
     }
 
     const localUser = await getLocalUser(userId);
-    const [session] = await db
-      .select()
-      .from(checkoutSessions)
-      .where(and(eq(checkoutSessions.paystackReference, reference), localUser ? eq(checkoutSessions.userId, localUser.id) : eq(checkoutSessions.userId, "00000000-0000-0000-0000-000000000000")))
-      .limit(1);
-
-    if (!session) {
-      res.status(404).json({ error: "Checkout session not found" });
+    if (!localUser) {
+      res.status(503).json({ error: 'Account not synced yet' });
       return;
     }
 
-    const payment = await paystackVerify(env, reference);
-    const paid = payment.status === "success" && payment.amount === session.totalCents && payment.currency === session.currency;
-    await db
-      .update(checkoutSessions)
-      .set({ paymentStatus: paid ? "paid" : "failed", ...(paid ? { paidAt: new Date() } : {}) })
-      .where(eq(checkoutSessions.id, session.id));
+    const [order] = await db
+      .select({ status: orders.status })
+      .from(orders)
+      .where(and(eq(orders.paystackReference, reference.data), eq(orders.userId, localUser.id)))
+      .limit(1);
 
-    res.json({ paid, reference: payment.reference });
+    if (order?.status === 'paid') {
+      res.json({ paid: true });
+      return;
+    }
+
+    const payment = await paystackVerify(env, reference.data);
+    res.json({ paid: payment.status === 'success', status: payment.status });
   } catch (e) {
-    next(e);
+    _next(e);
   }
 }

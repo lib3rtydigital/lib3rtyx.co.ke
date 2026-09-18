@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const emptyStringAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (value === '' || value == null ? undefined : value), schema.optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3001),
@@ -9,19 +12,16 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().min(1),
   CLERK_WEBHOOK_SECRET: z.string().min(1),
   FRONTEND_URL: z.string().url().default('http://localhost:5176'),
-  POLAR_ACCESS_TOKEN: z.string().optional(),
-  POLAR_WEBHOOK_SECRET: z.string().optional(),
-  POLAR_API_BASE: z.string().url().default('https://api.polar.sh'),
-  POLAR_CHECKOUT_PRODUCT_ID: z.string().optional(),
-  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_SECRET_KEY: emptyStringAsUndefined(z.string().min(1)),
   PAYSTACK_CURRENCY: z.string().default('NGN'),
+  PAYSTACK_CHECKOUT_PRODUCT_ID: emptyStringAsUndefined(z.string().uuid()),
   STREAM_API_KEY: z.string().min(1),
   STREAM_API_SECRET: z.string().min(1),
 
   IMAGEKIT_PUBLIC_KEY: z.string().min(1),
   IMAGEKIT_PRIVATE_KEY: z.string().min(1),
   IMAGEKIT_URL_ENDPOINT: z.string().url(),
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: emptyStringAsUndefined(z.string().url()),
 });
 
 export type Env = z.infer<typeof envSchema>
