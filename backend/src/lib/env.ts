@@ -13,7 +13,7 @@ const envSchema = z.object({
   CLERK_WEBHOOK_SECRET: z.string().min(1),
   FRONTEND_URL: z.string().url().default('http://localhost:5176'),
   PAYSTACK_SECRET_KEY: emptyStringAsUndefined(z.string().min(1)),
-  PAYSTACK_CURRENCY: z.string().default('NGN'),
+  PAYSTACK_CURRENCY: z.string().default('KES'),
   PAYSTACK_CHECKOUT_PRODUCT_ID: emptyStringAsUndefined(z.string().uuid()),
   STREAM_API_KEY: z.string().min(1),
   STREAM_API_SECRET: z.string().min(1),
