@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export type OrderStatus = 'pending' | 'paid' | 'failed';
+export type CheckoutPaymentStatus = 'pending' | 'paid' | 'failed';
 export type UserRole = 'customer' | 'support' | 'admin';
 
 export type CheckoutSessionLine = {
@@ -41,9 +42,12 @@ export const checkoutSessions = pgTable('checkout_sessions', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   polarCheckoutId: text('polar_checkout_id').unique(),
+  paystackReference: text('paystack_reference').unique(),
   lines: jsonb('lines').$type<CheckoutSessionLine[]>().notNull(),
   totalCents: integer('total_cents').notNull(),
   currency: text('currency').notNull(),
+  paymentStatus: text('payment_status').$type<CheckoutPaymentStatus>().notNull().default('pending'),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

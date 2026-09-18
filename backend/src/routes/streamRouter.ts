@@ -1,9 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
+import { createStreamToken } from '../controllers/streamController';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', (_req, res) => {
-  res.json({ ok: true, stream: null });
-});
+router.post('/token', createStreamToken);
 
 export default router;

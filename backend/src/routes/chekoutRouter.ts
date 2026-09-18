@@ -1,9 +1,9 @@
-import express from 'express';
+import { Router } from 'express';
+import { createCheckout, verifyCheckout } from '../controllers/checkoutController';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', (_req, res) => {
-  res.json({ ok: true, message: 'Checkout route placeholder' });
-});
+router.post('/', createCheckout);
+router.get('/verify', verifyCheckout);
 
 export default router;

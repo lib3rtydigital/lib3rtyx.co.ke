@@ -20,7 +20,7 @@ import productRouter from './routes/productRouter';
 import streamRouter from './routes/streamRouter';
 
 import { sentryClerkUserMiddleware } from './middleware/sentryClerkUser';
-import { polarWebhookHandler } from './webhooks/polar';
+import { paystackWebhookHandler } from './webhooks/paystack';
 
 const env = getEnv();
 const app = express();
@@ -31,8 +31,8 @@ const rawJson = express.raw({ type: 'application/json', limit: '1mb' });
 app.post('/webhooks/clerk', rawJson, (req, res) => {
   void clerkWebhookHandler(req, res);
 });
-app.post('/webhooks/polar', rawJson, (req, res) => {
-  void polarWebhookHandler(req, res);
+app.post('/webhooks/paystack', rawJson, (req, res) => {
+  void paystackWebhookHandler(req, res);
 });
 
 app.use(express.json());
