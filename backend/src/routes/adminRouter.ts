@@ -1,9 +1,21 @@
-import express from 'express';
+import { Router } from 'express';
+import {
+  createAdminProduct,
+  deleteAdminProduct,
+  getImageKitAuth,
+  listAdminProducts,
+  requireAdmin,
+  updateAdminProduct,
+} from '../controllers/adminController';
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', (_req, res) => {
-  res.json({ ok: true, message: 'Admin route placeholder' });
-});
+router.use(requireAdmin);
+
+router.get('/imagekit/auth', getImageKitAuth);
+router.get('/products', listAdminProducts);
+router.post('/products', createAdminProduct);
+router.patch('/products/:id', updateAdminProduct);
+router.delete('/products/:id', deleteAdminProduct);
 
 export default router;
