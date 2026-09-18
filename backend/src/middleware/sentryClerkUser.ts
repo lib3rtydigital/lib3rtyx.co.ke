@@ -1,9 +1,10 @@
-import type { NextFunction, Request, Response } from 'express';
+import { getAuth } from '@clerk/express';
+import * as Sentry from '@sentry/node';
+import type { RequestHandler } from 'express';
 
-export function sentryClerkUserMiddleware(
-  _req: Request,
-  _res: Response,
-  next: NextFunction,
-) {
+/** attach Clerk user id to the request isolation scope so errors include who was signed in */
+export const sentryClerkUserMiddleware: RequestHandler = (req, _res, next) => {
+  const { userId } = getAuth(req);
+  Sentry.getIsolationScope().setUser(userId ? { id: userId } : null);
   next();
-}
+};
